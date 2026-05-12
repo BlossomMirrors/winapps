@@ -4,11 +4,13 @@ if [[ "$LANG" == de_* ]]; then
     error="Um eine Windows-Anwendung auszuführen, öffne eine .exe-Datei mit der Windows Programmunterstützung."
     notify_body="Windows Programmunterstützung wird installiert…"
     install_error="Die Installation der Windows Programmunterstützung ist fehlgeschlagen. Weitere Details in der Protokolldatei:"
+    run_error="Die Windows-Anwendung konnte nicht gestartet werden. Weitere Details in der Protokolldatei:"
 else
     title="Windows application support"
     error="To run a Windows application, open an .exe file with Windows application support."
     notify_body="Installing Windows application support…"
     install_error="Windows application support installation failed. See the log file for details:"
+    run_error="Failed to run the Windows application. See the log file for details:"
 fi
 
 if [ -z "$1" ]; then
@@ -34,4 +36,11 @@ if ! flatpak-spawn --host flatpak info org.winehq.Wine > /dev/null 2>&1; then
     fi
 fi
 
-exec wine "$@"
+RUNLOG="${XDG_DATA_HOME:-$HOME/.local/share}/blossomos/winapps-run.log"
+mkdir -p "$(dirname "$RUNLOG")"
+
+flatpak-spawn --host flatpak run --command=wine org.winehq.Wine "$@" > "$RUNLOG" 2>&1
+if [ $? -ne 0 ]; then
+    flatpak-spawn --host kdialog --title "$title" \
+        --error "$run_error $RUNLOG"
+fi
