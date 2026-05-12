@@ -26,7 +26,7 @@ if ! flatpak-spawn --host flatpak info org.winehq.Wine > /dev/null 2>&1; then
     LOGFILE="${XDG_DATA_HOME:-$HOME/.local/share}/blossomos/winapps-install.log"
     mkdir -p "$(dirname "$LOGFILE")"
 
-    if ! flatpak-spawn --host flatpak install --assumeyes flathub org.winehq.Wine \
+    if ! flatpak-spawn --host flatpak install --assumeyes flathub org.winehq.Wine//stable-25.08 \
             > "$LOGFILE" 2>&1; then
         flatpak-spawn --host kdialog --title "$title" \
             --error "$install_error $LOGFILE"
