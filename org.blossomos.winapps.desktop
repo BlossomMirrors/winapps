@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Windows application support
+Name[de]=Windows Programmunterstützung
+Comment=Run Windows applications on BlossomOS
+Comment[de]=Windows-Anwendungen unter BlossomOS ausführen
+Icon=org.blossomos.winapps
+Exec=run-exe %f
+MimeType=application/x-ms-dos-executable;
+Categories=Utility;
+Terminal=false

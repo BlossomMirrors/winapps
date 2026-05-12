@@ -1,0 +1,19 @@
+#!/bin/bash
+if [[ "$LANG" == de_* ]]; then
+    title="Windows Programmunterstützung"
+    error="Um eine Windows-Anwendung auszuführen, öffne eine .exe-Datei mit der Windows Programmunterstützung."
+else
+    title="Windows application support"
+    error="To run a Windows application, open an .exe file with Windows application support."
+fi
+
+if [ -z "$1" ]; then
+    flatpak-spawn --host kdialog --title "$title" --error "$error"
+    exit 1
+fi
+
+if ! flatpak-spawn --host flatpak info org.winehq.Wine > /dev/null 2>&1; then
+    flatpak-spawn --host flatpak install --assumeyes flathub org.winehq.Wine
+fi
+
+exec wine "$@"

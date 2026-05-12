@@ -4,7 +4,7 @@ runtime-version: "25.08"
 sdk: org.freedesktop.Sdk
 base: org.winehq.Wine
 base-version: stable-25.08
-command: wine
+command: run-exe
 
 finish-args:
   - --share=network
@@ -20,6 +20,7 @@ finish-args:
   - --filesystem=/run/media
 
   - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.Flatpak
 
 extensions:
   org.winehq.Wine.gecko:
@@ -35,8 +36,14 @@ modules:
     build-commands:
       - install -Dm644 org.blossomos.winapps.metainfo.xml /app/share/metainfo/org.blossomos.winapps.metainfo.xml
       - install -Dm644 org.blossomos.winapps.svg /app/share/icons/hicolor/scalable/apps/org.blossomos.winapps.svg
+      - install -Dm644 org.blossomos.winapps.desktop /app/share/applications/org.blossomos.winapps.desktop
+      - install -Dm755 run-exe /app/bin/run-exe
     sources:
       - type: file
         path: org.blossomos.winapps.metainfo.xml
       - type: file
         path: org.blossomos.winapps.svg
+      - type: file
+        path: org.blossomos.winapps.desktop
+      - type: file
+        path: run-exe
