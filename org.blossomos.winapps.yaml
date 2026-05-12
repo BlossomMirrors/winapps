@@ -2,7 +2,8 @@ app-id: org.blossomos.winapps
 runtime: org.freedesktop.Platform
 runtime-version: "25.08"
 sdk: org.freedesktop.Sdk
-base: app/org.winehq.Wine/x86_64/stable-25.08
+base: org.winehq.Wine
+base-version: stable-25.08
 command: wine
 
 finish-args:
