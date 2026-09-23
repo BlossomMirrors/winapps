@@ -28,7 +28,6 @@ impl qobject::Library {
 
     pub(crate) fn run_now(self: core::pin::Pin<&mut Self>, entry: &Entry) {
         super::runner::sync_theme(entry);
-        super::runner::sync_dpi(entry);
         let overrides = self.rust().overrides();
         let env = env_for(entry, &overrides);
         self.spawn_detached(vec![entry.exe.clone()], env, entry.name.clone());
@@ -40,7 +39,6 @@ impl qobject::Library {
             return;
         };
         super::runner::sync_theme(&entry);
-        super::runner::sync_dpi(&entry);
         let overrides = self.rust().overrides();
         let env = env_for(&entry, &overrides);
         let status = format!("winetricks in {}…", entry.name);
@@ -206,6 +204,9 @@ impl qobject::Library {
     }
 
     pub(crate) fn prepare_proton_for_install(mut self: core::pin::Pin<&mut Self>) -> bool {
+        if super::runner::chosen_proton().is_some() {
+            return false;
+        }
         if crate::proton::installed_tag().is_some()
             && !super::paths::read_flag("proton_auto_update", true)
         {
@@ -228,6 +229,9 @@ impl qobject::Library {
 
         let installed = crate::proton::installed_tag();
         let forced = launch_after.is_none() && !self.rust().resume_installer;
+        if !forced && super::runner::chosen_proton().is_some() {
+            return false;
+        }
         if installed.is_some() && !forced && !super::paths::read_flag("proton_auto_update", true) {
             return false;
         }
@@ -306,6 +310,11 @@ impl qobject::Library {
 
     pub(crate) fn default_proton_name(&self) -> QString {
         QString::from(&default_proton())
+    }
+
+    pub(crate) fn proton_tools(&self) -> QString {
+        let tools = crate::proton::tools();
+        QString::from(&serde_json::to_string(&tools).unwrap_or_else(|_| "[]".to_string()))
     }
 
     pub(crate) fn env_preview(&self) -> QString {

@@ -43,11 +43,10 @@ pub mod qobject {
         #[qproperty(bool, preparing)]
         #[qproperty(f64, progress)]
         #[qproperty(QString, proton_build, cxx_name = "protonBuild")]
+        #[qproperty(QString, proton_tool, cxx_name = "protonTool")]
         #[qproperty(bool, auto_update, cxx_name = "autoUpdate")]
         #[qproperty(bool, wayland)]
         #[qproperty(bool, follow_theme, cxx_name = "followTheme")]
-        #[qproperty(QString, primary_monitor, cxx_name = "primaryMonitor")]
-        #[qproperty(QString, dpi_override, cxx_name = "dpiOverride")]
         #[qproperty(QString, umu_log, cxx_name = "umuLog")]
         #[qproperty(QString, proton_verb, cxx_name = "protonVerb")]
         #[qproperty(QString, proton_path, cxx_name = "protonPath")]
@@ -143,6 +142,10 @@ pub mod qobject {
         fn default_proton_name(self: &Library) -> QString;
 
         #[qinvokable]
+        #[cxx_name = "protonTools"]
+        fn proton_tools(self: &Library) -> QString;
+
+        #[qinvokable]
         #[cxx_name = "envPreview"]
         fn env_preview(self: &Library) -> QString;
     }
@@ -161,11 +164,10 @@ pub struct LibraryRust {
     preparing: bool,
     progress: f64,
     proton_build: QString,
+    proton_tool: QString,
     auto_update: bool,
     wayland: bool,
     follow_theme: bool,
-    primary_monitor: QString,
-    dpi_override: QString,
     umu_log: QString,
     proton_verb: QString,
     proton_path: QString,
@@ -194,11 +196,10 @@ impl Default for LibraryRust {
             preparing: false,
             progress: -1.0,
             proton_build: QString::from(&installed_build()),
+            proton_tool: QString::from(&paths::read_setting("proton_tool").unwrap_or_default()),
             auto_update: paths::read_flag("proton_auto_update", true),
             wayland: paths::read_flag("proton_wayland", true),
             follow_theme: paths::read_flag("follow_system_theme", true),
-            primary_monitor: QString::from(&paths::read_setting("primary_monitor").unwrap_or_default()),
-            dpi_override: QString::from(&paths::read_setting("dpi_override").unwrap_or_default()),
             umu_log: QString::default(),
             proton_verb: QString::from("waitforexitandrun"),
             proton_path: QString::default(),
@@ -259,6 +260,11 @@ impl cxx_qt::Initialize for qobject::Library {
             })
             .release();
         self.as_mut()
+            .on_proton_tool_changed(|qobject| {
+                save_setting("proton_tool", &qobject.proton_tool().to_string());
+            })
+            .release();
+        self.as_mut()
             .on_auto_update_changed(|qobject| {
                 paths::save_flag("proton_auto_update", *qobject.auto_update());
             })
@@ -271,16 +277,6 @@ impl cxx_qt::Initialize for qobject::Library {
         self.as_mut()
             .on_follow_theme_changed(|qobject| {
                 paths::save_flag("follow_system_theme", *qobject.follow_theme());
-            })
-            .release();
-        self.as_mut()
-            .on_primary_monitor_changed(|qobject| {
-                save_setting("primary_monitor", &qobject.primary_monitor().to_string());
-            })
-            .release();
-        self.as_mut()
-            .on_dpi_override_changed(|qobject| {
-                save_setting("dpi_override", &qobject.dpi_override().to_string());
             })
             .release();
         self.sync_entries();

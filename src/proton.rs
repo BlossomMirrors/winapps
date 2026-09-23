@@ -34,6 +34,73 @@ pub fn installed() -> Option<PathBuf> {
     found.pop()
 }
 
+#[derive(serde::Serialize)]
+pub struct Tool {
+    pub label: String,
+    pub value: String,
+    pub recommended: bool,
+}
+
+/// Compatibility tools a library can run with. The managed build comes first
+/// with an empty value, so picking it keeps following its updates.
+pub fn tools() -> Vec<Tool> {
+    let mut tools = vec![
+        Tool {
+            label: DISPLAY_NAME.to_string(),
+            value: String::new(),
+            recommended: true,
+        },
+        // umu fetches these by name on first use.
+        Tool {
+            label: "GE-Proton (newest release)".to_string(),
+            value: "GE-Proton".to_string(),
+            recommended: false,
+        },
+        Tool {
+            label: "UMU-Proton (newest release)".to_string(),
+            value: "UMU-Proton".to_string(),
+            recommended: false,
+        },
+    ];
+
+    let home = PathBuf::from(std::env::var("HOME").unwrap_or_default());
+    // Native Steam first: that is also where umu puts the builds it fetches.
+    for root in [
+        home.join(".local/share/Steam/compatibilitytools.d"),
+        home.join(".steam/root/compatibilitytools.d"),
+        home.join(".var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d"),
+        PathBuf::from("/usr/share/steam/compatibilitytools.d"),
+    ] {
+        let Ok(dir) = std::fs::read_dir(&root) else {
+            continue;
+        };
+        let mut found: Vec<PathBuf> = dir
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.join("proton").is_file())
+            .collect();
+        found.sort();
+        for path in found {
+            let label = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            // The Steam folders link to each other or hold copies of the same
+            // build, which would otherwise show up twice under one name.
+            if tools.iter().any(|t| t.label == label) {
+                continue;
+            }
+            tools.push(Tool {
+                label,
+                value: path.to_string_lossy().to_string(),
+                recommended: false,
+            });
+        }
+    }
+    tools
+}
+
 /// Wraps a reader and reports how much of it has been consumed.
 struct Counting<R> {
     inner: R,

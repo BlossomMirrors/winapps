@@ -4,6 +4,7 @@ import QtQuick.Controls as Controls
 import QtQuick.Dialogs
 import org.blossomos.winapps
 import org.kde.kirigami as Kirigami
+import org.kde.kirigamiaddons.delegates as Delegates
 import org.kde.kirigamiaddons.formcard as FormCard
 
 FormCard.FormCardPage {
@@ -11,16 +12,7 @@ FormCard.FormCardPage {
 
     title: qsTr("Settings")
 
-    property var monitorModel: {
-        const list = [{ label: qsTr("Auto (system primary)"), value: "" }]
-        for (const screen of Qt.application.screens) {
-            list.push({
-                label: screen.model.length > 0 ? `${screen.name} — ${screen.model}` : screen.name,
-                value: screen.name
-            })
-        }
-        return list
-    }
+    readonly property var protonTools: JSON.parse(Library.protonTools())
 
     FolderDialog {
         id: prefixRootDialog
@@ -34,8 +26,52 @@ FormCard.FormCardPage {
     }
 
     FormCard.FormCard {
+        FormCard.FormComboBoxDelegate {
+            id: toolBox
+            text: qsTr("Compatibility tool")
+            description: qsTr("What runs Windows programs. Applies the next time a program starts.")
+            textRole: "label"
+            valueRole: "value"
+            model: page.protonTools
+            comboBoxDelegate: Delegates.RoundedItemDelegate {
+                id: toolItem
+                required property var model
+                required property int index
+
+                implicitWidth: ListView.view ? ListView.view.width : Kirigami.Units.gridUnit * 16
+                text: model.label
+                highlighted: toolBox.highlightedIndex === index
+                contentItem: ToolRow { item: toolItem }
+            }
+            dialogDelegate: Delegates.RoundedItemDelegate {
+                id: toolDialogItem
+                required property var model
+                required property int index
+
+                implicitWidth: ListView.view ? ListView.view.width : Kirigami.Units.gridUnit * 16
+                text: model.label
+                contentItem: ToolRow { item: toolDialogItem }
+                onClicked: {
+                    toolBox.currentIndex = index
+                    toolBox.activated(index)
+                    toolBox.closeDialog()
+                }
+            }
+            Component.onCompleted: {
+                for (let i = 0; i < model.length; i++) {
+                    if (model[i].value === Library.protonTool) {
+                        currentIndex = i
+                        break
+                    }
+                }
+            }
+            onActivated: Library.protonTool = currentValue
+        }
+
+        FormCard.FormDelegateSeparator { }
+
         FormCard.FormTextDelegate {
-            text: qsTr("Installed build")
+            text: qsTr("Proton-Wineland build")
             description: Library.protonBuild.length > 0
                 ? Library.protonBuild
                 : qsTr("Not downloaded yet")
@@ -45,7 +81,8 @@ FormCard.FormCardPage {
 
         FormCard.FormSwitchDelegate {
             text: qsTr("Keep it up to date")
-            description: qsTr("Checks for a newer build before an app starts and installs it first.")
+            description: qsTr("Checks for a newer Proton-Wineland before an app starts and installs it first.")
+            enabled: Library.protonTool.length === 0
             checked: Library.autoUpdate
             onToggled: Library.autoUpdate = checked
         }
@@ -75,60 +112,9 @@ FormCard.FormCardPage {
             text: qsTr("Check now")
             description: Library.preparing && Library.status.length > 0
                 ? Library.status
-                : qsTr("Downloads the newest build right away.")
+                : qsTr("Downloads the newest Proton-Wineland right away.")
             enabled: !Library.busy && !Library.preparing
             onClicked: Library.ensureProton()
-        }
-    }
-
-    FormCard.FormHeader {
-        title: qsTr("Display")
-    }
-
-    FormCard.FormCard {
-        FormCard.FormComboBoxDelegate {
-            id: monitorBox
-            text: qsTr("Primary monitor")
-            description: qsTr("Which display Windows programs treat as the main one.")
-            textRole: "label"
-            valueRole: "value"
-            model: page.monitorModel
-            Component.onCompleted: {
-                for (let i = 0; i < model.length; i++) {
-                    if (model[i].value === Library.primaryMonitor) {
-                        currentIndex = i
-                        break
-                    }
-                }
-            }
-            onActivated: Library.primaryMonitor = currentValue
-        }
-
-        FormCard.FormDelegateSeparator { }
-
-        FormCard.FormComboBoxDelegate {
-            id: dpiBox
-            text: qsTr("Display scaling (DPI)")
-            description: qsTr("Overrides how large Windows programs render UI text and controls.")
-            textRole: "label"
-            valueRole: "value"
-            model: [
-                { label: qsTr("System default"), value: "" },
-                { label: "100%", value: "96" },
-                { label: "125%", value: "120" },
-                { label: "150%", value: "144" },
-                { label: "175%", value: "168" },
-                { label: "200%", value: "192" }
-            ]
-            Component.onCompleted: {
-                for (let i = 0; i < model.length; i++) {
-                    if (model[i].value === Library.dpiOverride) {
-                        currentIndex = i
-                        break
-                    }
-                }
-            }
-            onActivated: Library.dpiOverride = currentValue
         }
     }
 
@@ -148,6 +134,25 @@ FormCard.FormCardPage {
 
         FormCard.FormTextDelegate {
             text: qsTr("Prefixes can grow to several GB each. New installs suggest this folder, and it can still be changed per app.")
+        }
+    }
+
+    component ToolRow: RowLayout {
+        id: row
+
+        required property var item
+
+        spacing: Kirigami.Units.smallSpacing
+
+        Delegates.DefaultContentItem {
+            itemDelegate: row.item
+            Layout.fillWidth: true
+        }
+
+        Kirigami.Badge {
+            visible: row.item.model.recommended
+            text: qsTr("Recommended")
+            type: Kirigami.Badge.Type.Positive
         }
     }
 }

@@ -7,10 +7,20 @@ pub(crate) fn installed_build() -> String {
     crate::proton::installed_tag().unwrap_or_default()
 }
 
+pub(crate) fn chosen_proton() -> Option<String> {
+    let tool = crate::library::paths::read_setting("proton_tool")?;
+    if tool.starts_with('/') && !std::path::Path::new(&tool).join("proton").is_file() {
+        return None;
+    }
+    Some(tool)
+}
+
 pub(crate) fn default_proton() -> String {
-    crate::proton::installed()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_default()
+    chosen_proton().unwrap_or_else(|| {
+        crate::proton::installed()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default()
+    })
 }
 
 pub(crate) fn sandboxed() -> bool {
@@ -41,20 +51,6 @@ pub(crate) fn sync_theme(entry: &Entry) {
     let _ = crate::wine::theme::apply(&prefix, &scheme);
 }
 
-pub(crate) fn sync_dpi(entry: &Entry) {
-    let Some(dpi) = crate::library::paths::read_setting("dpi_override") else {
-        return;
-    };
-    let Ok(dpi) = dpi.parse::<u32>() else {
-        return;
-    };
-    let prefix = PathBuf::from(&entry.prefix);
-    if !prefix.join("user.reg").is_file() {
-        return;
-    }
-    let _ = crate::wine::dpi::apply(&prefix, dpi);
-}
-
 pub(crate) fn env_for(entry: &Entry, overrides: &[(String, String)]) -> Vec<(String, String)> {
     let mut env = vec![
         ("WINEPREFIX".to_string(), entry.prefix.clone()),
@@ -70,9 +66,6 @@ pub(crate) fn env_for(entry: &Entry, overrides: &[(String, String)]) -> Vec<(Str
     ];
     if crate::library::paths::read_flag("proton_wayland", true) {
         env.push(("PROTON_ENABLE_WAYLAND".to_string(), "1".to_string()));
-    }
-    if let Some(monitor) = crate::library::paths::read_setting("primary_monitor") {
-        env.push(("WAYLANDDRV_PRIMARY_MONITOR".to_string(), monitor));
     }
     let proton = default_proton();
     if !proton.is_empty() {
@@ -95,7 +88,6 @@ pub fn launch_headless(id: &str) -> i32 {
         return 1;
     }
     sync_theme(&entry);
-    sync_dpi(&entry);
     let mut cmd = host_command("umu-run");
     for (key, value) in env_for(&entry, &[]) {
         if sandboxed() {
