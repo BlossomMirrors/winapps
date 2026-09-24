@@ -1,14 +1,14 @@
 use cxx_qt::{CxxQtType, Threading};
-use cxx_qt_lib::QString;
+use cxx_qt_lib::{QString, QUrl};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
 use super::classify::is_msi;
-use super::entry::{Entry, Staged, save_entries, slugify, write_desktop_entry};
-use super::icon::extract_icon;
-use super::paths::{app_dir, desktop_file, staging_dir};
-use super::prefix::{prefix_exes, shortcut_targets};
+use super::entry::{Entry, Staged, save_entries, slugify, unique_id, write_desktop_entry};
+use super::icon::{extract_icon, shortcut_icon};
+use super::paths::{app_dir, desktop_file, scan_dir, staging_dir};
+use super::prefix::{ShortcutInfo, looks_like_a_prefix, prefix_exes, shortcut_targets, suite_name};
 use super::runner::env_for;
 use super::{classify::looks_like_installer, qobject};
 
@@ -75,6 +75,91 @@ impl qobject::Library {
         self.sync_staged();
     }
 
+    pub(crate) fn scan_prefix(&self, folder: &QUrl) -> QString {
+        let Some(folder) = folder.to_local_file() else {
+            return QString::from("null");
+        };
+        let folder = PathBuf::from(folder.to_string());
+        let prefix = folder.canonicalize().unwrap_or(folder);
+        if !looks_like_a_prefix(&prefix) {
+            return QString::from("null");
+        }
+
+        let prefix_text = prefix.to_string_lossy().to_string();
+        let programs = shortcut_targets(&prefix);
+        let group = self
+            .rust()
+            .entries
+            .iter()
+            .find(|e| e.prefix == prefix_text && !e.group.is_empty())
+            .map(|e| e.group.clone())
+            .or_else(|| suite_name(&prefix, &programs))
+            .or_else(|| {
+                prefix
+                    .file_name()
+                    .map(|name| name.to_string_lossy().to_string())
+            })
+            .unwrap_or_default();
+
+        let scan = scan_dir();
+        let _ = std::fs::remove_dir_all(&scan);
+        let mut known = 0;
+        let mut apps = Vec::new();
+        for (index, program) in programs.into_iter().enumerate() {
+            if self
+                .rust()
+                .entries
+                .iter()
+                .any(|e| e.exe == program.exe && e.args == program.args)
+            {
+                known += 1;
+                continue;
+            }
+            let icon = shortcut_icon(&program, &scan.join(index.to_string())).unwrap_or_default();
+            apps.push(Entry {
+                name: program.name,
+                exe: program.exe,
+                args: program.args,
+                description: program.description,
+                icon,
+                ..Default::default()
+            });
+        }
+        let found = serde_json::json!({
+            "prefix": prefix_text,
+            "group": group,
+            "apps": apps,
+            "known": known,
+        });
+        QString::from(&found.to_string())
+    }
+
+    pub(crate) fn import_prefix(
+        mut self: core::pin::Pin<&mut Self>,
+        prefix: &QString,
+        picked: &QString,
+        group: &QString,
+        shortcut: bool,
+    ) {
+        let prefix = PathBuf::from(prefix.to_string());
+        let picked: Vec<Entry> = serde_json::from_str(&picked.to_string()).unwrap_or_default();
+        let programs = shortcut_targets(&prefix)
+            .into_iter()
+            .filter(|p| picked.iter().any(|e| e.exe == p.exe && e.args == p.args))
+            .collect();
+        let template = Entry {
+            prefix: prefix.to_string_lossy().to_string(),
+            group: group.to_string().trim().to_string(),
+            kind: "imported".to_string(),
+            ..Default::default()
+        };
+        self.as_mut().add_programs(&template, programs, shortcut);
+    }
+
+    pub(crate) fn discard_scan(&self) {
+        let _ = std::fs::remove_dir_all(scan_dir());
+    }
+
     pub(crate) fn adopt_staged(
         mut self: core::pin::Pin<&mut Self>,
         name: &str,
@@ -122,8 +207,10 @@ impl qobject::Library {
             id: id.clone(),
             name: name.to_string(),
             exe: String::new(),
+            args: Vec::new(),
             installer: local.to_string_lossy().to_string(),
             prefix: prefix.to_string_lossy().to_string(),
+            group: String::new(),
             gameid: if staged.gameid.is_empty() {
                 format!("umu-{id}")
             } else {
@@ -158,6 +245,45 @@ impl qobject::Library {
         self.as_mut().rust_mut().entries.push(entry);
         save_entries(&self.rust().entries);
         self.sync_entries();
+    }
+
+    pub(crate) fn add_programs(
+        mut self: core::pin::Pin<&mut Self>,
+        template: &Entry,
+        programs: Vec<ShortcutInfo>,
+        shortcut: bool,
+    ) {
+        for program in programs {
+            if self
+                .rust()
+                .entries
+                .iter()
+                .any(|e| e.exe == program.exe && e.args == program.args)
+            {
+                continue;
+            }
+            let id = unique_id(&program.name, &self.rust().entries);
+            let icon = shortcut_icon(&program, &app_dir(&id)).unwrap_or_default();
+            let gameid = if template.gameid.is_empty() {
+                format!("umu-{id}")
+            } else {
+                template.gameid.clone()
+            };
+            let entry = Entry {
+                id,
+                name: program.name,
+                exe: program.exe,
+                args: program.args,
+                description: program.description,
+                icon,
+                gameid,
+                shortcut: false,
+                ..template.clone()
+            };
+            self.as_mut()
+                .append_log(&format!("added {} from {}", entry.name, entry.prefix));
+            self.as_mut().register(entry, shortcut);
+        }
     }
 
     pub(crate) fn commit_portable(
@@ -263,12 +389,15 @@ impl qobject::Library {
 
         std::thread::spawn(move || {
             let mut settled = 0;
+            let mut last_count = 0;
             for _ in 0..1800 {
                 std::thread::sleep(std::time::Duration::from_secs(2));
                 if !watching.load(Ordering::SeqCst) {
                     return;
                 }
-                if shortcut_targets(&prefix).is_empty() {
+                let count = shortcut_targets(&prefix).len();
+                if count == 0 || count != last_count {
+                    last_count = count;
                     settled = 0;
                     continue;
                 }
@@ -318,12 +447,26 @@ impl qobject::Library {
             return;
         }
 
-        let after = prefix_exes(&PathBuf::from(&entry.prefix));
+        let prefix = PathBuf::from(&entry.prefix);
+        let mut programs = shortcut_targets(&prefix);
+        if programs.len() > 1 {
+            let mut template = entry.clone();
+            if template.gameid == format!("umu-{}", template.id) {
+                template.gameid.clear();
+            }
+            if template.group.is_empty() {
+                template.group = suite_name(&prefix, &programs).unwrap_or(entry.name.clone());
+            }
+            self.as_mut().add_programs(&template, programs, shortcut);
+            self.as_mut().rust_mut().staged = None;
+            self.sync_staged();
+            return;
+        }
+
+        let after = prefix_exes(&prefix);
         let fresh: Vec<String> = after.into_iter().filter(|p| !before.contains(p)).collect();
 
-        let matched_shortcut = shortcut_targets(&PathBuf::from(&entry.prefix))
-            .into_iter()
-            .next();
+        let matched_shortcut = programs.pop();
         let shortcut_exe = matched_shortcut.as_ref().map(|s| s.exe.clone());
 
         if shortcut_exe.is_none() && fresh.is_empty() {
@@ -364,19 +507,22 @@ impl qobject::Library {
             .append_log(&format!("{}: launching {best}", entry.name));
 
         let mut entry = entry;
-        let installed = PathBuf::from(&best);
-
-        if let Some(icon) = extract_icon(&installed, &app_dir(&entry.id)) {
+        let icon = match &matched_shortcut {
+            Some(shortcut) => shortcut_icon(shortcut, &app_dir(&entry.id)),
+            None => extract_icon(&PathBuf::from(&best), &app_dir(&entry.id)),
+        };
+        if let Some(icon) = icon {
             entry.icon = icon;
         }
 
-        if let Some(shortcut) = &matched_shortcut {
+        if let Some(shortcut) = matched_shortcut {
             if !shortcut.name.is_empty() {
-                entry.name = shortcut.name.clone();
+                entry.name = shortcut.name;
             }
             if entry.description.is_empty() && !shortcut.description.is_empty() {
-                entry.description = shortcut.description.clone();
+                entry.description = shortcut.description;
             }
+            entry.args = shortcut.args;
         }
         entry.exe = best;
         self.as_mut().register(entry, shortcut);

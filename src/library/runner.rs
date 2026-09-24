@@ -96,7 +96,7 @@ pub fn launch_headless(id: &str) -> i32 {
             cmd.env(key, value);
         }
     }
-    cmd.arg(&entry.exe);
+    cmd.arg(&entry.exe).args(&entry.args);
     match cmd.status() {
         Ok(status) => status.code().unwrap_or(0),
         Err(e) => {

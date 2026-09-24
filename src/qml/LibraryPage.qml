@@ -15,6 +15,28 @@ Kirigami.ScrollablePage {
         ? JSON.parse(Library.entriesJson)
         : []
 
+    readonly property var groups: {
+        const found = []
+        const byKey = {}
+        for (const entry of entries) {
+            const key = entry.group.length > 0 ? entry.prefix + "\n" + entry.group : "\n" + entry.id
+            if (byKey[key] === undefined) {
+                byKey[key] = { key: key, name: entry.group, apps: [] }
+                found.push(byKey[key])
+            }
+            byKey[key].apps.push(entry)
+        }
+        return found
+    }
+
+    property var opened: []
+
+    function toggleGroup(key) {
+        opened = opened.indexOf(key) >= 0
+            ? opened.filter(other => other !== key)
+            : opened.concat([key])
+    }
+
     signal importRequested()
 
     actions: [
@@ -89,24 +111,44 @@ Kirigami.ScrollablePage {
         visible: page.entries.length > 0
 
         Repeater {
-            model: page.entries
+            model: page.groups
 
             FormCard.FormCard {
+                id: card
+
                 required property var modelData
+
+                readonly property bool suite: modelData.apps.length > 1
+                readonly property bool open: page.opened.indexOf(modelData.key) >= 0
 
                 Layout.topMargin: Kirigami.Units.largeSpacing
 
                 FormCard.AbstractFormDelegate {
-                    background: null
+                    visible: card.suite
+                    onClicked: page.toggleGroup(card.modelData.key)
                     contentItem: RowLayout {
                         spacing: Kirigami.Units.largeSpacing
 
-                        Kirigami.Icon {
-                            source: modelData.icon.length > 0
-                                ? "file://" + modelData.icon
-                                : "application-x-ms-dos-executable"
+                        GridLayout {
+                            columns: 2
+                            rowSpacing: Math.round(Kirigami.Units.smallSpacing / 2)
+                            columnSpacing: Math.round(Kirigami.Units.smallSpacing / 2)
                             Layout.preferredWidth: Kirigami.Units.iconSizes.large
                             Layout.preferredHeight: Kirigami.Units.iconSizes.large
+
+                            Repeater {
+                                model: card.modelData.apps.slice(0, 4)
+
+                                Kirigami.Icon {
+                                    required property var modelData
+
+                                    source: modelData.icon.length > 0
+                                        ? "file://" + modelData.icon
+                                        : "application-x-ms-dos-executable"
+                                    Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                                    Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                                }
+                            }
                         }
 
                         ColumnLayout {
@@ -115,73 +157,132 @@ Kirigami.ScrollablePage {
 
                             Controls.Label {
                                 Layout.fillWidth: true
-                                text: modelData.name
+                                text: card.modelData.name
                                 elide: Text.ElideRight
                             }
 
                             Controls.Label {
                                 Layout.fillWidth: true
-                                elide: Text.ElideMiddle
+                                elide: Text.ElideRight
                                 color: Kirigami.Theme.disabledTextColor
                                 font: Kirigami.Theme.smallFont
-                                text: modelData.exe.length > 0
-                                    ? modelData.exe
-                                    : qsTr("No executable picked yet")
+                                text: qsTr("%1 programs").arg(card.modelData.apps.length)
                             }
                         }
 
-                        Controls.Button {
-                            text: qsTr("Play")
-                            icon.name: "media-playback-start-symbolic"
-                            enabled: !Library.busy && modelData.exe.length > 0
-                            onClicked: Library.launch(modelData.id)
+                        FormCard.FormArrow {
+                            direction: card.open ? Qt.UpArrow : Qt.DownArrow
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: !card.suite || card.open ? card.modelData.apps : []
+
+                    ColumnLayout {
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        FormCard.FormDelegateSeparator {
+                            visible: card.suite
                         }
 
-                        Controls.ToolButton {
-                            icon.name: "overflow-menu"
-                            onClicked: appMenu.popup()
+                        FormCard.AbstractFormDelegate {
+                            Layout.fillWidth: true
+                            background: null
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.largeSpacing
 
-                            Controls.Menu {
-                                id: appMenu
+                                Kirigami.Icon {
+                                    source: modelData.icon.length > 0
+                                        ? "file://" + modelData.icon
+                                        : "application-x-ms-dos-executable"
+                                    Layout.preferredWidth: card.suite
+                                        ? Kirigami.Units.iconSizes.medium
+                                        : Kirigami.Units.iconSizes.large
+                                    Layout.preferredHeight: Layout.preferredWidth
+                                }
 
-                                Controls.MenuItem {
-                                    text: qsTr("Pick executable…")
-                                    onTriggered: {
-                                        exePicker.appId = modelData.id
-                                        exePicker.options = JSON.parse(Library.candidates(modelData.id))
-                                        exePicker.open()
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 0
+
+                                    Controls.Label {
+                                        Layout.fillWidth: true
+                                        text: modelData.name
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Controls.Label {
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideMiddle
+                                        color: Kirigami.Theme.disabledTextColor
+                                        font: Kirigami.Theme.smallFont
+                                        text: modelData.exe.length > 0
+                                            ? modelData.exe
+                                            : qsTr("No executable picked yet")
                                     }
                                 }
-                                Controls.MenuItem {
-                                    text: qsTr("Run installer again")
-                                    enabled: !Library.busy && modelData.kind === "installer"
-                                    onTriggered: Library.runInstaller(modelData.id)
+
+                                Controls.Button {
+                                    text: qsTr("Play")
+                                    icon.name: "media-playback-start-symbolic"
+                                    enabled: !Library.busy && modelData.exe.length > 0
+                                    onClicked: Library.launch(modelData.id)
                                 }
-                                Controls.MenuItem {
-                                    text: modelData.shortcut
-                                        ? qsTr("Remove desktop entry")
-                                        : qsTr("Create desktop entry")
-                                    onTriggered: Library.setShortcut(modelData.id, !modelData.shortcut)
-                                }
-                                Controls.MenuSeparator { }
-                                Controls.MenuItem {
-                                    text: qsTr("Run winetricks")
-                                    enabled: !Library.busy
-                                    onTriggered: Library.winetricks(modelData.id)
-                                }
-                                Controls.MenuItem {
-                                    text: qsTr("Open prefix")
-                                    onTriggered: Library.openPrefix(modelData.id)
-                                }
-                                Controls.MenuSeparator { }
-                                Controls.MenuItem {
-                                    text: qsTr("Uninstall…")
-                                    icon.name: "edit-delete-symbolic"
-                                    onTriggered: {
-                                        uninstallPrompt.appId = modelData.id
-                                        uninstallPrompt.appName = modelData.name
-                                        uninstallPrompt.appPrefix = modelData.prefix
-                                        uninstallPrompt.open()
+
+                                Controls.ToolButton {
+                                    icon.name: "overflow-menu"
+                                    onClicked: appMenu.popup()
+
+                                    Controls.Menu {
+                                        id: appMenu
+
+                                        Controls.MenuItem {
+                                            text: qsTr("Pick executable…")
+                                            onTriggered: {
+                                                exePicker.appId = modelData.id
+                                                exePicker.options = JSON.parse(Library.candidates(modelData.id))
+                                                exePicker.open()
+                                            }
+                                        }
+                                        Controls.MenuItem {
+                                            text: qsTr("Run installer again")
+                                            enabled: !Library.busy && modelData.kind === "installer"
+                                            onTriggered: Library.runInstaller(modelData.id)
+                                        }
+                                        Controls.MenuItem {
+                                            text: modelData.shortcut
+                                                ? qsTr("Remove desktop entry")
+                                                : qsTr("Create desktop entry")
+                                            onTriggered: Library.setShortcut(modelData.id, !modelData.shortcut)
+                                        }
+                                        Controls.MenuSeparator { }
+                                        Controls.MenuItem {
+                                            text: qsTr("Run winetricks")
+                                            enabled: !Library.busy
+                                            onTriggered: Library.winetricks(modelData.id)
+                                        }
+                                        Controls.MenuItem {
+                                            text: qsTr("Open prefix")
+                                            onTriggered: Library.openPrefix(modelData.id)
+                                        }
+                                        Controls.MenuSeparator { }
+                                        Controls.MenuItem {
+                                            text: modelData.kind === "imported"
+                                                ? qsTr("Remove…")
+                                                : qsTr("Uninstall…")
+                                            icon.name: "edit-delete-symbolic"
+                                            onTriggered: {
+                                                uninstallPrompt.appId = modelData.id
+                                                uninstallPrompt.appName = modelData.name
+                                                uninstallPrompt.appPrefix = modelData.prefix
+                                                uninstallPrompt.appKind = modelData.kind
+                                                uninstallPrompt.open()
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -198,13 +299,25 @@ Kirigami.ScrollablePage {
         property string appId: ""
         property string appName: ""
         property string appPrefix: ""
+        property string appKind: ""
 
-        title: qsTr("Uninstall %1?").arg(appName)
-        subtitle: qsTr("This deletes the program, its Windows prefix and its desktop entry. Saved games and settings inside the prefix go with it.\n\n%1").arg(appPrefix)
+        readonly property var sharing: page.entries
+            .filter(entry => entry.prefix === appPrefix && entry.id !== appId)
+            .map(entry => entry.name)
+        readonly property bool keepsPrefix: sharing.length > 0 || appKind === "imported"
+
+        title: keepsPrefix
+            ? qsTr("Remove %1?").arg(appName)
+            : qsTr("Uninstall %1?").arg(appName)
+        subtitle: sharing.length > 0
+            ? qsTr("This removes it from the library and deletes its desktop entry. The Windows prefix stays because these apps still use it: %1\n\n%2").arg(sharing.join(", ")).arg(appPrefix)
+            : appKind === "imported"
+                ? qsTr("This removes it from the library and deletes its desktop entry. The Windows prefix was imported and stays where it is.\n\n%1").arg(appPrefix)
+                : qsTr("This deletes the program, its Windows prefix and its desktop entry. Saved games and settings inside the prefix go with it.\n\n%1").arg(appPrefix)
         standardButtons: Kirigami.Dialog.Cancel
 
         footerLeadingComponent: Controls.Button {
-            text: qsTr("Uninstall")
+            text: uninstallPrompt.keepsPrefix ? qsTr("Remove") : qsTr("Uninstall")
             icon.name: "edit-delete-symbolic"
             icon.color: Kirigami.Theme.negativeTextColor
             palette.buttonText: Kirigami.Theme.negativeTextColor

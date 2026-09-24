@@ -21,6 +21,10 @@ pub(crate) fn staging_dir() -> PathBuf {
     data_dir().join("staging")
 }
 
+pub(crate) fn scan_dir() -> PathBuf {
+    data_dir().join("scan")
+}
+
 pub(crate) fn applications_dir() -> PathBuf {
     let base = std::env::var("XDG_DATA_HOME")
         .map(PathBuf::from)

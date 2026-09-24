@@ -1,7 +1,9 @@
+use pelite::resources::Name;
 use std::io::Read;
 use std::path::PathBuf;
 
 use super::classify::is_msi;
+use super::prefix::ShortcutInfo;
 
 pub(crate) fn ico_to_png(bytes: &[u8], dest: &PathBuf) -> Option<String> {
     let dir = ico::IconDir::read(std::io::Cursor::new(bytes)).ok()?;
@@ -83,6 +85,39 @@ pub(crate) fn extract_icon(source: &PathBuf, dest_dir: &PathBuf) -> Option<Strin
     }
 }
 
+pub(crate) fn shortcut_icon(shortcut: &ShortcutInfo, dest_dir: &PathBuf) -> Option<String> {
+    let _ = std::fs::create_dir_all(dest_dir);
+    let dest = dest_dir.join("icon.png");
+    shortcut
+        .icon
+        .as_ref()
+        .and_then(|(file, index)| icon_at(file, *index, &dest))
+        .or_else(|| icon_from_pe(&PathBuf::from(&shortcut.exe), &dest))
+}
+
+fn icon_at(file: &PathBuf, index: i32, dest: &PathBuf) -> Option<String> {
+    if file
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("ico"))
+    {
+        return ico_to_png(&std::fs::read(file).ok()?, dest);
+    }
+    let map = pelite::FileMap::open(file).ok()?;
+    let pe = pelite::PeFile::from_bytes(map.as_ref()).ok()?;
+    let resources = pe.resources().ok()?;
+    let found = match usize::try_from(index) {
+        Ok(place) => resources.icons().nth(place).and_then(Result::ok),
+        Err(_) => resources
+            .icons()
+            .flatten()
+            .find(|(name, _)| matches!(name, Name::Id(id) if *id == index.unsigned_abs())),
+    };
+    let (_, group) = found?;
+    let mut ico = Vec::new();
+    group.write(&mut ico).ok()?;
+    ico_to_png(&ico, dest)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,6 +144,47 @@ mod tests {
         assert_png(&extract_icon(&path, &dir).expect("no icon extracted"));
         let files: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().collect();
         assert_eq!(files.len(), 1, "unexpected leftovers: {files:?}");
+    }
+
+    #[test]
+    fn shortcut_icon_reads_ico_files() {
+        let dir = std::env::temp_dir().join("winapps-icon-ico");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let mut icons = ico::IconDir::new(ico::ResourceType::Icon);
+        let image = ico::IconImage::from_rgba_data(16, 16, vec![255; 16 * 16 * 4]);
+        icons.add_entry(ico::IconDirEntry::encode(&image).unwrap());
+        let file = dir.join("app.ico");
+        icons.write(std::fs::File::create(&file).unwrap()).unwrap();
+
+        let shortcut = ShortcutInfo {
+            name: "App".to_string(),
+            exe: dir.join("missing.exe").to_string_lossy().to_string(),
+            args: Vec::new(),
+            description: String::new(),
+            icon: Some((file, 0)),
+        };
+        assert_png(&shortcut_icon(&shortcut, &dir.join("out")).expect("no icon extracted"));
+    }
+
+    #[test]
+    fn shortcut_icons_of_a_real_prefix() {
+        let Some(prefix) = std::env::var("WINAPPS_TEST_PREFIX").ok().map(PathBuf::from) else {
+            return;
+        };
+        let dir = std::env::temp_dir().join("winapps-icon-shortcuts");
+        let _ = std::fs::remove_dir_all(&dir);
+        for (index, shortcut) in super::super::prefix::shortcut_targets(&prefix)
+            .iter()
+            .enumerate()
+        {
+            let dest = dir.join(index.to_string());
+            let icon = shortcut_icon(shortcut, &dest);
+            let icon = icon.unwrap_or_else(|| panic!("no icon for {}", shortcut.name));
+            println!("{} -> {icon}", shortcut.name);
+            assert_png(&icon);
+        }
     }
 
     fn assert_png(path: &str) {

@@ -28,6 +28,8 @@ pub mod qobject {
     unsafe extern "C++" {
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
+        include!("cxx-qt-lib/qurl.h");
+        type QUrl = cxx_qt_lib::QUrl;
     }
 
     extern "RustQt" {
@@ -84,6 +86,24 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "discardStaged"]
         fn discard_staged(self: Pin<&mut Library>);
+
+        #[qinvokable]
+        #[cxx_name = "scanPrefix"]
+        fn scan_prefix(self: &Library, folder: &QUrl) -> QString;
+
+        #[qinvokable]
+        #[cxx_name = "importPrefix"]
+        fn import_prefix(
+            self: Pin<&mut Library>,
+            prefix: &QString,
+            picked: &QString,
+            group: &QString,
+            shortcut: bool,
+        );
+
+        #[qinvokable]
+        #[cxx_name = "discardScan"]
+        fn discard_scan(self: &Library);
 
         #[qinvokable]
         fn cancel(self: Pin<&mut Library>);

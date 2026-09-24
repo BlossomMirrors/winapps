@@ -21,6 +21,112 @@ FormCard.FormCardPage {
         onAccepted: Library.prefixRoot = selectedFolder.toString().replace("file://", "")
     }
 
+    FolderDialog {
+        id: importPrefixDialog
+        title: qsTr("Pick the Windows prefix to import")
+        currentFolder: "file://" + Library.prefixRoot
+        onAccepted: programPicker.load(selectedFolder)
+    }
+
+    Kirigami.Dialog {
+        id: programPicker
+
+        property var scan: null
+        property var picked: []
+
+        readonly property var apps: scan ? scan.apps : []
+        readonly property int pickedCount: picked.filter(wanted => wanted).length
+
+        function load(folder) {
+            const found = JSON.parse(Library.scanPrefix(folder))
+            picked = found ? found.apps.map(() => true) : []
+            scan = found
+            groupField.text = found ? found.group : ""
+            open()
+        }
+
+        title: qsTr("Import programs")
+        preferredWidth: Kirigami.Units.gridUnit * 28
+        standardButtons: Kirigami.Dialog.Cancel
+        onClosed: Library.discardScan()
+        customFooterActions: [
+            Kirigami.Action {
+                icon.name: "list-add-symbolic"
+                text: qsTr("Add to library")
+                enabled: programPicker.pickedCount > 0
+                onTriggered: {
+                    const chosen = programPicker.apps.filter((app, index) => programPicker.picked[index])
+                    Library.importPrefix(programPicker.scan.prefix, JSON.stringify(chosen),
+                        groupField.text, desktopEntriesSwitch.checked)
+                    programPicker.close()
+                }
+            }
+        ]
+
+        ColumnLayout {
+            spacing: 0
+
+            Controls.Label {
+                Layout.fillWidth: true
+                Layout.margins: Kirigami.Units.largeSpacing
+                visible: programPicker.apps.length === 0
+                wrapMode: Text.WordWrap
+                text: programPicker.scan === null
+                    ? qsTr("This folder is not a Windows prefix. Pick the folder that contains drive_c.")
+                    : programPicker.scan.known > 0
+                        ? qsTr("Every program in the Start Menu of this prefix is already in the library.")
+                        : qsTr("The Start Menu of this prefix has no programs in it.")
+            }
+
+            Repeater {
+                model: programPicker.apps
+
+                FormCard.FormCheckDelegate {
+                    required property var modelData
+                    required property int index
+
+                    text: modelData.name
+                    description: modelData.description.length > 0
+                        ? modelData.description
+                        : modelData.exe
+                    icon.name: modelData.icon.length > 0 ? "" : "application-x-ms-dos-executable"
+                    icon.source: modelData.icon.length > 0 ? "file://" + modelData.icon : ""
+                    icon.width: Kirigami.Units.iconSizes.medium
+                    icon.height: Kirigami.Units.iconSizes.medium
+                    checked: true
+                    onToggled: {
+                        const picked = programPicker.picked.slice()
+                        picked[index] = checked
+                        programPicker.picked = picked
+                    }
+                }
+            }
+
+            FormCard.FormDelegateSeparator {
+                visible: groupField.visible
+            }
+
+            FormCard.FormTextFieldDelegate {
+                id: groupField
+                visible: programPicker.pickedCount + (programPicker.scan ? programPicker.scan.known : 0) > 1
+                label: qsTr("Group name")
+                description: qsTr("Programs from this prefix share one card in the library.")
+            }
+
+            FormCard.FormDelegateSeparator {
+                visible: programPicker.apps.length > 0
+            }
+
+            FormCard.FormSwitchDelegate {
+                id: desktopEntriesSwitch
+                visible: programPicker.apps.length > 0
+                text: qsTr("Create desktop entries")
+                description: qsTr("Adds them to the application menu.")
+                checked: true
+            }
+        }
+    }
+
     FormCard.FormHeader {
         title: qsTr("Compatibility")
     }
@@ -134,6 +240,15 @@ FormCard.FormCardPage {
 
         FormCard.FormTextDelegate {
             text: qsTr("Prefixes can grow to several GB each. New installs suggest this folder, and it can still be changed per app.")
+        }
+
+        FormCard.FormDelegateSeparator { }
+
+        FormCard.FormButtonDelegate {
+            icon.name: "document-import-symbolic"
+            text: qsTr("Import a prefix…")
+            description: qsTr("Adds the programs from the Start Menu of an existing Windows prefix. A suite like Office shows up as Word, Excel and the rest.")
+            onClicked: importPrefixDialog.open()
         }
     }
 

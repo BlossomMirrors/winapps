@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use super::entry::{Entry, save_entries, write_desktop_entry};
 use super::icon::extract_icon;
-use super::paths::{app_dir, desktop_file};
+use super::paths::{app_dir, data_dir, desktop_file};
 use super::prefix::{looks_like_a_prefix, prefix_exes};
 use super::qobject;
 use super::runner::{default_proton, env_for, host_command};
@@ -30,7 +30,9 @@ impl qobject::Library {
         super::runner::sync_theme(entry);
         let overrides = self.rust().overrides();
         let env = env_for(entry, &overrides);
-        self.spawn_detached(vec![entry.exe.clone()], env, entry.name.clone());
+        let mut args = vec![entry.exe.clone()];
+        args.extend(entry.args.iter().cloned());
+        self.spawn_detached(args, env, entry.name.clone());
     }
 
     pub(crate) fn winetricks(self: core::pin::Pin<&mut Self>, id: &QString) {
@@ -88,6 +90,7 @@ impl qobject::Library {
             .find(|e| e.id == id)
         {
             entry.exe = exe;
+            entry.args.clear();
             if !icon.is_empty() {
                 entry.icon = icon;
             }
@@ -173,7 +176,25 @@ impl qobject::Library {
         let _ = std::fs::remove_dir_all(app_dir(&id));
 
         let prefix = PathBuf::from(&entry.prefix);
-        if looks_like_a_prefix(&prefix) {
+        let sharing: Vec<String> = self
+            .rust()
+            .entries
+            .iter()
+            .filter(|e| e.id != id && e.prefix == entry.prefix)
+            .map(|e| e.name.clone())
+            .collect();
+        if !sharing.is_empty() {
+            self.as_mut().append_log(&format!(
+                "kept {} because it is still used by {}",
+                prefix.display(),
+                sharing.join(", ")
+            ));
+        } else if entry.kind == "imported" {
+            self.as_mut().append_log(&format!(
+                "kept {} because it was imported and not made by winapps",
+                prefix.display()
+            ));
+        } else if looks_like_a_prefix(&prefix) {
             match std::fs::remove_dir_all(&prefix) {
                 Ok(()) => self
                     .as_mut()
@@ -181,6 +202,12 @@ impl qobject::Library {
                 Err(e) => self
                     .as_mut()
                     .append_log(&format!("could not remove {}: {e}", prefix.display())),
+            }
+            let apps = data_dir().join("apps");
+            if let Some(folder) = std::path::Path::new(&entry.installer).parent() {
+                if folder.parent() == Some(apps.as_path()) {
+                    let _ = std::fs::remove_dir_all(folder);
+                }
             }
         } else {
             self.as_mut().append_log(&format!(

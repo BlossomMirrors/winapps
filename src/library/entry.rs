@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::paths::{applications_dir, data_dir, desktop_file, library_file};
+use super::paths::{app_dir, applications_dir, data_dir, desktop_file, library_file};
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
@@ -8,8 +8,10 @@ pub struct Entry {
     pub(crate) id: String,
     pub(crate) name: String,
     pub(crate) exe: String,
+    pub(crate) args: Vec<String>,
     pub(crate) installer: String,
     pub(crate) prefix: String,
+    pub(crate) group: String,
     pub(crate) gameid: String,
     pub(crate) icon: String,
     pub(crate) kind: String,
@@ -69,6 +71,17 @@ pub(crate) fn slugify(name: &str) -> String {
     }
 }
 
+pub(crate) fn unique_id(name: &str, entries: &[Entry]) -> String {
+    let base = slugify(name);
+    let mut id = base.clone();
+    let mut number = 2;
+    while entries.iter().any(|e| e.id == id) || app_dir(&id).exists() {
+        id = format!("{base}-{number}");
+        number += 1;
+    }
+    id
+}
+
 pub(crate) const DEFAULT_CATEGORIES: &str = "Utility;";
 
 pub(crate) fn write_desktop_entry(entry: &Entry) -> std::io::Result<()> {
@@ -98,8 +111,9 @@ pub(crate) fn write_desktop_entry(entry: &Entry) -> std::io::Result<()> {
          Categories={categories}\n\
          Terminal=false\n\
          StartupNotify=true\n\
+         StartupWMClass={}\n\
          X-WinApps-Id={}\n",
-        entry.name, entry.id, entry.id
+        entry.name, entry.id, entry.gameid, entry.id
     );
     std::fs::write(desktop_file(&entry.id), contents)
 }
@@ -129,5 +143,21 @@ mod tests {
         assert_eq!(slugify("Epic Games Launcher"), "epic-games-launcher");
         assert_eq!(slugify("App 1.0 (x64)"), "app-1-0--x64");
         assert!(slugify("///").starts_with("app-"));
+    }
+
+    #[test]
+    fn unique_id_numbers_taken_names() {
+        let name = "Winapps Unique Id Probe";
+        assert_eq!(unique_id(name, &[]), "winapps-unique-id-probe");
+
+        let taken = |id: &str| Entry {
+            id: id.to_string(),
+            ..Default::default()
+        };
+        let entries = [
+            taken("winapps-unique-id-probe"),
+            taken("winapps-unique-id-probe-2"),
+        ];
+        assert_eq!(unique_id(name, &entries), "winapps-unique-id-probe-3");
     }
 }
