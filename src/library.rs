@@ -19,7 +19,7 @@ mod runner;
 use entry::{Entry, Staged, load_entries};
 use paths::{default_prefix_root, save_setting};
 use runner::installed_build;
-use runner::{host_command, sandboxed};
+use runner::{host_command, sandboxed, sync_theme};
 
 pub use runner::launch_headless;
 
@@ -428,6 +428,7 @@ impl qobject::Library {
         args: Vec<String>,
         env: Vec<(String, String)>,
         label: String,
+        theme_for: Option<Entry>,
     ) {
         let thread = self.qt_thread();
         let shown: Vec<String> = env
@@ -445,6 +446,9 @@ impl qobject::Library {
 
         let thread = thread.clone();
         std::thread::spawn(move || {
+            if let Some(entry) = &theme_for {
+                sync_theme(entry);
+            }
             let mut cmd = host_command("umu-run");
             if sandboxed() {
                 for (key, value) in &env {

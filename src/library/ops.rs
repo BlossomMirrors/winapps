@@ -20,6 +20,11 @@ impl qobject::Library {
             self.append_log(&format!("{}: no executable picked yet", entry.name));
             return;
         }
+        if super::runner::chosen_proton().is_none() && crate::proton::installed_tag().is_some() {
+            self.as_mut().run_now(&entry);
+            self.prepare_proton(None);
+            return;
+        }
         if self.as_mut().prepare_proton(Some(id)) {
             return;
         }
@@ -27,12 +32,11 @@ impl qobject::Library {
     }
 
     pub(crate) fn run_now(self: core::pin::Pin<&mut Self>, entry: &Entry) {
-        super::runner::sync_theme(entry);
         let overrides = self.rust().overrides();
         let env = env_for(entry, &overrides);
         let mut args = vec![super::runner::launch_target(entry)];
         args.extend(entry.args.iter().cloned());
-        self.spawn_detached(args, env, entry.name.clone());
+        self.spawn_detached(args, env, entry.name.clone(), Some(entry.clone()));
     }
 
     pub(crate) fn winetricks(self: core::pin::Pin<&mut Self>, id: &QString) {

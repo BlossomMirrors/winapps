@@ -48,7 +48,17 @@ pub(crate) fn sync_theme(entry: &Entry) {
     let Some(scheme) = crate::wine::theme::system_scheme() else {
         return;
     };
-    let _ = crate::wine::theme::apply(&prefix, &scheme);
+    let stamp = format!(
+        "{scheme:?} {}",
+        std::fs::read_to_string(prefix.join("version")).unwrap_or_default()
+    );
+    let stamp_path = prefix.join("sangria-theme.stamp");
+    if std::fs::read_to_string(&stamp_path).is_ok_and(|s| s == stamp) {
+        return;
+    }
+    if crate::wine::theme::apply(&prefix, &scheme).is_ok() {
+        let _ = std::fs::write(&stamp_path, stamp);
+    }
 }
 
 pub(crate) fn launch_target(entry: &Entry) -> String {
