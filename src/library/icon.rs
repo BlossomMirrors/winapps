@@ -127,7 +127,7 @@ mod tests {
         let Some(exe) = std::env::var("WINAPPS_TEST_EXE").ok().map(PathBuf::from) else {
             return;
         };
-        let dir = std::env::temp_dir().join("winapps-icon-pe");
+        let dir = std::env::temp_dir().join("sangria-icon-pe");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         assert_png(&extract_icon(&exe, &dir).expect("no icon extracted"));
@@ -138,7 +138,7 @@ mod tests {
         let Some(path) = std::env::var("WINAPPS_TEST_MSI").ok().map(PathBuf::from) else {
             return;
         };
-        let dir = std::env::temp_dir().join("winapps-icon-msi");
+        let dir = std::env::temp_dir().join("sangria-icon-msi");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         assert_png(&extract_icon(&path, &dir).expect("no icon extracted"));
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn shortcut_icon_reads_ico_files() {
-        let dir = std::env::temp_dir().join("winapps-icon-ico");
+        let dir = std::env::temp_dir().join("sangria-icon-ico");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
 
@@ -173,7 +173,7 @@ mod tests {
         let Some(prefix) = std::env::var("WINAPPS_TEST_PREFIX").ok().map(PathBuf::from) else {
             return;
         };
-        let dir = std::env::temp_dir().join("winapps-icon-shortcuts");
+        let dir = std::env::temp_dir().join("sangria-icon-shortcuts");
         let _ = std::fs::remove_dir_all(&dir);
         for (index, shortcut) in super::super::prefix::shortcut_targets(&prefix)
             .iter()

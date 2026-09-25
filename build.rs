@@ -15,18 +15,15 @@ fn main() {
         );
     }
 
-    CxxQtBuilder::new_qml_module(
-        QmlModule::new("org.blossomos.winapps")
-            .qml_files([
-                "src/qml/Main.qml",
-                "src/qml/LibraryPage.qml",
-                "src/qml/DebugPage.qml",
-                "src/qml/ImportWindow.qml",
-                "src/qml/SettingsPage.qml",
-                "src/qml/AboutPage.qml",
-            ]),
-    )
+    CxxQtBuilder::new_qml_module(QmlModule::new("org.blossomos.sangria").qml_files([
+        "src/qml/Main.qml",
+        "src/qml/LibraryPage.qml",
+        "src/qml/DebugPage.qml",
+        "src/qml/ImportWindow.qml",
+        "src/qml/SettingsPage.qml",
+        "src/qml/AboutPage.qml",
+    ]))
     .files(["src/main.rs", "src/library.rs"])
-    .qrc_resources(["org.blossomos.winapps.svg"])
+    .qrc_resources(["org.blossomos.sangria.svg"])
     .build();
 }

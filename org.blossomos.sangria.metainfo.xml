@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>org.blossomos.winapps</id>
+  <id>org.blossomos.sangria</id>
 
   <metadata_license>FSFAP</metadata_license>
   <project_license>AGPL-3.0-only</project_license>
 
-  <name>WinApps</name>
-  <name xml:lang="de">Windows-Programmunterstützung</name>
+  <name>Sangria</name>
+  <name xml:lang="de">Sangria</name>
 
-  <summary>Install and run Windows programs on Linux</summary>
-  <summary xml:lang="de">Windows-Programme unter Linux installieren und ausführen</summary>
+  <summary>Install and run Windows programs on Linux seemlessly</summary>
+  <summary xml:lang="de">Windows-Programme unter Linux nahtlos installieren und ausführen</summary>
 
   <developer id="org.blossomos">
     <name>Blossom Labs</name>
   </developer>
 
-  <launchable type="desktop-id">org.blossomos.winapps.desktop</launchable>
-  <icon type="stock">org.blossomos.winapps</icon>
+  <launchable type="desktop-id">org.blossomos.sangria.desktop</launchable>
+  <icon type="stock">org.blossomos.sangria</icon>
 
   <description>
     <p>
-      WinApps runs Windows programs on Linux. Open a Windows Application file and it
+      Sangria runs Windows programs on Linux. Open a Windows Application file and it
       starts, with no compatibility layer to set up first and no per-application
       configuration to work through.
     </p>
     <p xml:lang="de">
-      Windows-Programmunterstützung führt Windows-Programme unter Linux aus. Öffnen
+      Sangria führt Windows-Programme unter Linux aus. Öffnen
       Sie eine Windows Programm Datei und sie startet, ohne dass zuvor eine Kompatibilitätsschicht
       eingerichtet oder jede Anwendung einzeln konfiguriert werden muss.
     </p>
@@ -40,8 +40,8 @@
   </description>
 
   <url type="homepage">https://blossom.computer</url>
-  <url type="bugtracker">https://dev.blossomos.org/blossom/winapps/-/boards</url>
-  <url type="vcs-browser">https://dev.blossomos.org/blossom/winapps</url>
+  <url type="bugtracker">https://dev.blossomos.org/blossom/sangria/-/boards</url>
+  <url type="vcs-browser">https://dev.blossomos.org/blossom/sangria</url>
 
   <categories>
     <category>Utility</category>

@@ -51,6 +51,12 @@ pub(crate) fn sync_theme(entry: &Entry) {
     let _ = crate::wine::theme::apply(&prefix, &scheme);
 }
 
+pub(crate) fn launch_target(entry: &Entry) -> String {
+    let exe = PathBuf::from(&entry.exe);
+    super::prefix::prefix_to_windows(&PathBuf::from(&entry.prefix), &exe)
+        .unwrap_or_else(|| entry.exe.clone())
+}
+
 pub(crate) fn env_for(entry: &Entry, overrides: &[(String, String)]) -> Vec<(String, String)> {
     let mut env = vec![
         ("WINEPREFIX".to_string(), entry.prefix.clone()),
@@ -80,11 +86,11 @@ pub(crate) fn env_for(entry: &Entry, overrides: &[(String, String)]) -> Vec<(Str
 
 pub fn launch_headless(id: &str) -> i32 {
     let Some(entry) = load_entries().into_iter().find(|e| e.id == id) else {
-        eprintln!("winapps: no app with id {id}");
+        eprintln!("sangria: no app with id {id}");
         return 1;
     };
     if entry.exe.is_empty() {
-        eprintln!("winapps: {} has no executable set", entry.name);
+        eprintln!("sangria: {} has no executable set", entry.name);
         return 1;
     }
     sync_theme(&entry);
@@ -96,11 +102,11 @@ pub fn launch_headless(id: &str) -> i32 {
             cmd.env(key, value);
         }
     }
-    cmd.arg(&entry.exe).args(&entry.args);
+    cmd.arg(launch_target(&entry)).args(&entry.args);
     match cmd.status() {
         Ok(status) => status.code().unwrap_or(0),
         Err(e) => {
-            eprintln!("winapps: could not start umu-run: {e}");
+            eprintln!("sangria: could not start umu-run: {e}");
             1
         }
     }

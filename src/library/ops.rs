@@ -30,7 +30,7 @@ impl qobject::Library {
         super::runner::sync_theme(entry);
         let overrides = self.rust().overrides();
         let env = env_for(entry, &overrides);
-        let mut args = vec![entry.exe.clone()];
+        let mut args = vec![super::runner::launch_target(entry)];
         args.extend(entry.args.iter().cloned());
         self.spawn_detached(args, env, entry.name.clone());
     }
@@ -191,7 +191,7 @@ impl qobject::Library {
             ));
         } else if entry.kind == "imported" {
             self.as_mut().append_log(&format!(
-                "kept {} because it was imported and not made by winapps",
+                "kept {} because it was imported and not made by sangria",
                 prefix.display()
             ));
         } else if looks_like_a_prefix(&prefix) {

@@ -1,5 +1,5 @@
 [package]
-name = "winapps"
+name = "sangria"
 version = "0.1.0"
 authors = [ "Blossom Labs <hello@blossomos.org>", "Leonie Ain <me@koyu.space>" ]
 edition = "2024"

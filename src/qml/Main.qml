@@ -1,13 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
-import org.blossomos.winapps
+import org.blossomos.sangria
 import org.kde.kirigami as Kirigami
 
 Kirigami.ApplicationWindow {
     id: root
 
-    title: qsTr("WinApps")
+    title: qsTr("Sangria")
 
     minimumWidth: Kirigami.Units.gridUnit * 30
     minimumHeight: Kirigami.Units.gridUnit * 24
@@ -97,13 +97,13 @@ Kirigami.ApplicationWindow {
             },
             Kirigami.Action {
                 icon.name: "help-about-symbolic"
-                text: qsTr("About WinApps")
+                text: qsTr("About Sangria")
                 onTriggered: pageStack.pushDialogLayer(aboutPage, {
                     width: root.width
                 }, {
                     width: Kirigami.Units.gridUnit * 33,
                     height: Kirigami.Units.gridUnit * 35,
-                    title: qsTr("About WinApps")
+                    title: qsTr("About Sangria")
                 })
             }
         ]

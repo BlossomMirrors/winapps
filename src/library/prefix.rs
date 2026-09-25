@@ -97,13 +97,24 @@ fn find_ignoring_case(base: &Path, rest: &str) -> Option<PathBuf> {
     Some(path)
 }
 
-/// What a Start Menu or Desktop shortcut says about the program it launches.
+pub(crate) fn prefix_to_windows(prefix: &Path, exe: &Path) -> Option<String> {
+    let real_prefix = prefix.canonicalize().ok()?;
+    let real_exe = exe.canonicalize().ok()?;
+    let inside = real_exe.strip_prefix(&real_prefix).ok()?;
+    let inside = inside
+        .strip_prefix("pfx")
+        .or_else(|_| inside.strip_prefix("."))
+        .unwrap_or(inside);
+    let rest = inside.strip_prefix("drive_c").ok()?;
+    let parts: Vec<String> = rest
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .collect();
+    Some(format!("C:\\{}", parts.join("\\")))
+}
+
 #[derive(Debug)]
 pub(crate) struct ShortcutInfo {
-    /// The shortcut's own file name, e.g. "Epic Games Launcher" from
-    /// "Epic Games Launcher.lnk". This is the name the installer chose to show
-    /// end users, more reliable than either the installer package's own
-    /// metadata or the installed executable's version resource.
     pub(crate) name: String,
     pub(crate) exe: String,
     pub(crate) args: Vec<String>,
@@ -295,19 +306,19 @@ mod tests {
         assert!(!looks_like_a_prefix(&PathBuf::from("/home")));
         assert!(!looks_like_a_prefix(&PathBuf::from("/tmp")));
 
-        let root = std::env::temp_dir().join("winapps-guard/deep/prefix");
+        let root = std::env::temp_dir().join("sangria-guard/deep/prefix");
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("drive_c")).unwrap();
         assert!(looks_like_a_prefix(&root));
 
-        let bare = std::env::temp_dir().join("winapps-guard/deep/empty");
+        let bare = std::env::temp_dir().join("sangria-guard/deep/empty");
         std::fs::create_dir_all(&bare).unwrap();
         assert!(!looks_like_a_prefix(&bare));
     }
 
     #[test]
     fn windows_paths_map_to_drive_c_only() {
-        let root = std::env::temp_dir().join("winapps-winpath");
+        let root = std::env::temp_dir().join("sangria-winpath");
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("drive_c/Program Files/App")).unwrap();
         std::fs::write(root.join("drive_c/Program Files/App/App.exe"), b"MZ").unwrap();
@@ -322,7 +333,7 @@ mod tests {
 
     #[test]
     fn windows_paths_ignore_letter_case() {
-        let root = std::env::temp_dir().join("winapps-case");
+        let root = std::env::temp_dir().join("sangria-case");
         let _ = std::fs::remove_dir_all(&root);
         let office = root.join("drive_c/Program Files/Microsoft Office/root/Office16");
         std::fs::create_dir_all(&office).unwrap();
@@ -338,10 +349,31 @@ mod tests {
         assert_eq!(
             windows_to_prefix(
                 &root,
-                "C:\\Program Files\\..\\..\\winapps-case\\drive_c\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE"
+                "C:\\Program Files\\..\\..\\sangria-case\\drive_c\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE"
             ),
             None
         );
+    }
+
+    #[test]
+    fn linux_paths_become_windows_paths() {
+        let root = std::env::temp_dir().join("sangria-towin");
+        let _ = std::fs::remove_dir_all(&root);
+        let exe = root.join("drive_c/Program Files/App/App.exe");
+        std::fs::create_dir_all(exe.parent().unwrap()).unwrap();
+        std::fs::write(&exe, b"MZ").unwrap();
+        std::os::unix::fs::symlink(".", root.join("pfx")).unwrap();
+
+        assert_eq!(
+            prefix_to_windows(&root, &exe).as_deref(),
+            Some("C:\\Program Files\\App\\App.exe")
+        );
+        assert_eq!(
+            prefix_to_windows(&root, &root.join("pfx/drive_c/Program Files/App/App.exe"))
+                .as_deref(),
+            Some("C:\\Program Files\\App\\App.exe")
+        );
+        assert_eq!(prefix_to_windows(&root, &std::env::temp_dir()), None);
     }
 
     #[test]
@@ -416,7 +448,7 @@ mod tests {
 
     #[test]
     fn a_suite_gives_one_target_per_program() {
-        let prefix = std::env::temp_dir().join("winapps-suite/prefix");
+        let prefix = std::env::temp_dir().join("sangria-suite/prefix");
         let _ = std::fs::remove_dir_all(&prefix);
         let office = prefix.join("drive_c/Program Files/Microsoft Office/root/Office16");
         let menu = prefix.join("drive_c/ProgramData/Microsoft/Windows/Start Menu/Programs");
@@ -519,7 +551,7 @@ mod tests {
 
     #[test]
     fn exe_scan_stays_inside_the_prefix() {
-        let root = std::env::temp_dir().join("winapps-symlink");
+        let root = std::env::temp_dir().join("sangria-symlink");
         let _ = std::fs::remove_dir_all(&root);
         let prefix = root.join("prefix");
         let outside = root.join("outside");

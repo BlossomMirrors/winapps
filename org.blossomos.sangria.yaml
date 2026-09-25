@@ -1,8 +1,8 @@
-app-id: org.blossomos.winapps
+app-id: org.blossomos.sangria
 runtime: org.kde.Platform
 runtime-version: '6.11'
 sdk: org.kde.Sdk
-command: winapps
+command: sangria
 
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable//25.08
@@ -10,7 +10,7 @@ sdk-extensions:
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
   env:
-    CARGO_HOME: /run/build/winapps/cargo
+    CARGO_HOME: /run/build/sangria/cargo
   build-args:
     - --share=network
 
@@ -31,14 +31,14 @@ finish-args:
   - --talk-name=org.freedesktop.Notifications
 
 modules:
-  - name: winapps
+  - name: sangria
     buildsystem: simple
     build-commands:
       - cargo build --release
-      - install -Dm755 target/release/winapps /app/bin/winapps
-      - install -Dm644 org.blossomos.winapps.desktop /app/share/applications/org.blossomos.winapps.desktop
-      - install -Dm644 org.blossomos.winapps.metainfo.xml /app/share/metainfo/org.blossomos.winapps.metainfo.xml
-      - install -Dm644 org.blossomos.winapps.svg /app/share/icons/hicolor/scalable/apps/org.blossomos.winapps.svg
+      - install -Dm755 target/release/sangria /app/bin/sangria
+      - install -Dm644 org.blossomos.sangria.desktop /app/share/applications/org.blossomos.sangria.desktop
+      - install -Dm644 org.blossomos.sangria.metainfo.xml /app/share/metainfo/org.blossomos.sangria.metainfo.xml
+      - install -Dm644 org.blossomos.sangria.svg /app/share/icons/hicolor/scalable/apps/org.blossomos.sangria.svg
     sources:
       - type: dir
         path: .

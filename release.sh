@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-NAME=winapps
+NAME=sangria
 CURRENT_VERSION=$(cat VERSION)
 
 VERSION=${1:-$CURRENT_VERSION}
@@ -25,9 +25,9 @@ trap 'rm -rf "$STAGE"' EXIT
 PAYLOAD="$STAGE/$NAME-$VERSION"
 
 install -Dm755 "$SRC_DIR/target/release/$NAME" "$PAYLOAD/usr/bin/$NAME"
-install -Dm644 "$SRC_DIR/org.blossomos.winapps.desktop" "$PAYLOAD/usr/share/applications/org.blossomos.winapps.desktop"
-install -Dm644 "$SRC_DIR/org.blossomos.winapps.metainfo.xml" "$PAYLOAD/usr/share/metainfo/org.blossomos.winapps.metainfo.xml"
-install -Dm644 "$SRC_DIR/org.blossomos.winapps.svg" "$PAYLOAD/usr/share/icons/hicolor/scalable/apps/org.blossomos.winapps.svg"
+install -Dm644 "$SRC_DIR/org.blossomos.sangria.desktop" "$PAYLOAD/usr/share/applications/org.blossomos.sangria.desktop"
+install -Dm644 "$SRC_DIR/org.blossomos.sangria.metainfo.xml" "$PAYLOAD/usr/share/metainfo/org.blossomos.sangria.metainfo.xml"
+install -Dm644 "$SRC_DIR/org.blossomos.sangria.svg" "$PAYLOAD/usr/share/icons/hicolor/scalable/apps/org.blossomos.sangria.svg"
 
 tar -C "$STAGE" -czf "$RPMBUILD/SOURCES/$NAME-$VERSION.tar.gz" "$NAME-$VERSION"
 
@@ -37,7 +37,7 @@ Version:        $VERSION
 Release:        $RELEASE%{?dist}
 Summary:        Install and run Windows programs on BlossomOS
 License:        AGPL-3.0-only
-URL:            https://dev.blossomos.org/blossom/winapps
+URL:            https://dev.blossomos.org/blossom/sangria
 Source0:        %{name}-%{version}.tar.gz
 %define debug_package %{nil}
 
@@ -51,7 +51,7 @@ Requires:       kf6-ki18n
 Requires:       xdg-utils
 
 %description
-WinApps installs and runs Windows programs on BlossomOS. It keeps one Proton
+Sangria installs and runs Windows programs on BlossomOS. It keeps one Proton
 prefix per application through umu-launcher and lists what you have installed.
 
 %prep
@@ -63,10 +63,10 @@ prefix per application through umu-launcher and lists what you have installed.
 cp -a usr %{buildroot}/
 
 %files
-%{_bindir}/winapps
-%{_datadir}/applications/org.blossomos.winapps.desktop
-%{_datadir}/metainfo/org.blossomos.winapps.metainfo.xml
-%{_datadir}/icons/hicolor/scalable/apps/org.blossomos.winapps.svg
+%{_bindir}/sangria
+%{_datadir}/applications/org.blossomos.sangria.desktop
+%{_datadir}/metainfo/org.blossomos.sangria.metainfo.xml
+%{_datadir}/icons/hicolor/scalable/apps/org.blossomos.sangria.svg
 
 %post
 /usr/bin/update-desktop-database %{_datadir}/applications &>/dev/null || :

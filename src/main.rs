@@ -48,7 +48,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if let Some(index) = args.iter().position(|a| a == "--launch") {
         let Some(id) = args.get(index + 1) else {
-            eprintln!("winapps: --launch needs an app id");
+            eprintln!("sangria: --launch needs an app id");
             std::process::exit(2);
         };
         std::process::exit(library::launch_headless(id));
@@ -68,15 +68,15 @@ fn main() {
 
     KCrash::initialize();
 
-    KLocalizedString::set_application_domain(&QByteArray::from("winapps"));
+    KLocalizedString::set_application_domain(&QByteArray::from("sangria"));
 
     if env::var("QT_QUICK_CONTROLS_STYLE").is_err() {
         QQuickStyle::set_style(&QString::from("org.kde.desktop"));
     }
 
     let about_data = KAboutData::from(
-        QString::from("winapps"),
-        i18nc("@title", "WinApps"),
+        QString::from("sangria"),
+        i18nc("@title", "Sangria"),
         QString::from("0.1.0"),
         QString::from("Install and run Windows programs on Linux"),
         License::Unknown,
@@ -84,7 +84,7 @@ fn main() {
 
     KAboutData::set_application_data(&about_data);
 
-    QGuiApplication::set_desktop_file_name(&QString::from("org.blossomos.winapps"));
+    QGuiApplication::set_desktop_file_name(&QString::from("org.blossomos.sangria"));
 
     let mut engine = QQmlApplicationEngine::new();
 
@@ -92,7 +92,7 @@ fn main() {
         ki18n::setup_localized_context(engine.as_mut().upcast_pin());
 
         engine.load(&QUrl::from(
-            "qrc:/qt/qml/org/blossomos/winapps/src/qml/Main.qml",
+            "qrc:/qt/qml/org/blossomos/sangria/src/qml/Main.qml",
         ));
     }
 

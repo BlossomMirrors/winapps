@@ -6,7 +6,7 @@ pub(crate) fn data_dir() -> PathBuf {
         .unwrap_or_else(|_| {
             PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share")
         });
-    base.join("winapps")
+    base.join("sangria")
 }
 
 pub(crate) fn library_file() -> PathBuf {
@@ -35,7 +35,7 @@ pub(crate) fn applications_dir() -> PathBuf {
 }
 
 pub(crate) fn desktop_file(id: &str) -> PathBuf {
-    applications_dir().join(format!("winapps-{id}.desktop"))
+    applications_dir().join(format!("sangria-{id}.desktop"))
 }
 
 pub(crate) fn settings_file() -> PathBuf {

@@ -1,7 +1,7 @@
 use sha2::{Digest, Sha512};
 use std::io::Read;
-use std::sync::Arc;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 //FIXME change it to own wine fork
 pub const RELEASES_API: &str =
@@ -16,7 +16,7 @@ pub fn install_root() -> PathBuf {
         .unwrap_or_else(|_| {
             PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share")
         });
-    base.join("winapps").join("proton")
+    base.join("sangria").join("proton")
 }
 
 pub fn installed_tag() -> Option<String> {
@@ -137,7 +137,7 @@ pub struct Release {
 
 fn get(url: &str) -> Result<Vec<u8>, String> {
     let mut body = ureq::get(url)
-        .header("User-Agent", "winapps")
+        .header("User-Agent", "sangria")
         .call()
         .map_err(|e| format!("{url}: {e}"))?
         .into_body();
@@ -262,7 +262,7 @@ pub fn download(
 
     progress(&format!("downloading {}", release.tag), -1.0);
     let response = ureq::get(&release.url)
-        .header("User-Agent", "winapps")
+        .header("User-Agent", "sangria")
         .call()
         .map_err(|e| format!("{}: {e}", release.url))?;
     let total: u64 = response
@@ -312,7 +312,11 @@ pub fn download(
                 );
             }
         }
-        let actual: String = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect();
+        let actual: String = hasher
+            .finalize()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
         if actual != expected {
             return Err("checksum mismatch, the download was corrupted".to_string());
         }
@@ -454,7 +458,10 @@ mod progress_tests {
 
         let seen = seen.lock().unwrap();
         assert!(!seen.is_empty(), "no progress reported");
-        assert!(seen.iter().all(|(label, _)| label.starts_with("unpacking ")));
+        assert!(
+            seen.iter()
+                .all(|(label, _)| label.starts_with("unpacking "))
+        );
         let last = seen.last().unwrap();
         assert!((last.1 - 1.0).abs() < f64::EPSILON, "ended at {}", last.1);
         assert!(

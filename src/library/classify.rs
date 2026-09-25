@@ -146,7 +146,7 @@ mod describe_tests {
 
     #[test]
     fn describe_returns_none_without_resources() {
-        let path = std::env::temp_dir().join("winapps-not-a-pe.exe");
+        let path = std::env::temp_dir().join("sangria-not-a-pe.exe");
         std::fs::write(&path, b"not a pe file at all").unwrap();
         assert_eq!(describe(&path), None);
     }

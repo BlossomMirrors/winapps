@@ -87,7 +87,7 @@ pub(crate) const DEFAULT_CATEGORIES: &str = "Utility;";
 pub(crate) fn write_desktop_entry(entry: &Entry) -> std::io::Result<()> {
     std::fs::create_dir_all(applications_dir())?;
     let icon = if entry.icon.is_empty() {
-        "org.blossomos.winapps".to_string()
+        "org.blossomos.sangria".to_string()
     } else {
         entry.icon.clone()
     };
@@ -107,12 +107,12 @@ pub(crate) fn write_desktop_entry(entry: &Entry) -> std::io::Result<()> {
          Name={}\n\
          {comment_line}\
          Icon={icon}\n\
-         Exec=winapps --launch {}\n\
+         Exec=sangria --launch {}\n\
          Categories={categories}\n\
          Terminal=false\n\
          StartupNotify=true\n\
          StartupWMClass={}\n\
-         X-WinApps-Id={}\n",
+         X-Sangria-Id={}\n",
         entry.name, entry.id, entry.gameid, entry.id
     );
     std::fs::write(desktop_file(&entry.id), contents)
@@ -147,17 +147,17 @@ mod tests {
 
     #[test]
     fn unique_id_numbers_taken_names() {
-        let name = "Winapps Unique Id Probe";
-        assert_eq!(unique_id(name, &[]), "winapps-unique-id-probe");
+        let name = "Sangria Unique Id Probe";
+        assert_eq!(unique_id(name, &[]), "sangria-unique-id-probe");
 
         let taken = |id: &str| Entry {
             id: id.to_string(),
             ..Default::default()
         };
         let entries = [
-            taken("winapps-unique-id-probe"),
-            taken("winapps-unique-id-probe-2"),
+            taken("sangria-unique-id-probe"),
+            taken("sangria-unique-id-probe-2"),
         ];
-        assert_eq!(unique_id(name, &entries), "winapps-unique-id-probe-3");
+        assert_eq!(unique_id(name, &entries), "sangria-unique-id-probe-3");
     }
 }

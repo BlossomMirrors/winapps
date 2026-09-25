@@ -5,7 +5,7 @@ use pelite::resources::{Entry, Name};
 use super::theme::{BLACK, Rgb, Scheme, WHITE, mix};
 
 pub(crate) const REGISTRY_PATH: &str =
-    "C:\\\\windows\\\\resources\\\\themes\\\\winapps\\\\winapps.msstyles";
+    "C:\\\\windows\\\\resources\\\\themes\\\\sangria\\\\sangria.msstyles";
 
 const THEMES: &str = "drive_c/windows/resources/themes";
 
@@ -51,9 +51,9 @@ const SYSMETRICS: &[(&str, &str)] = &[
 pub(crate) fn generate(prefix: &Path, scheme: &Scheme) -> Result<(), String> {
     let themes = prefix.join(THEMES);
     let source = themes.join("light").join("light.msstyles");
-    let dir = themes.join("winapps");
-    let target = dir.join("winapps.msstyles");
-    let stamp_path = dir.join("winapps.stamp");
+    let dir = themes.join("sangria");
+    let target = dir.join("sangria.msstyles");
+    let stamp_path = dir.join("sangria.stamp");
 
     let meta = std::fs::metadata(&source).map_err(|e| format!("{}: {e}", source.display()))?;
     let stamp = format!(
@@ -262,8 +262,8 @@ fn edit(section: &str, key: &str, value: &str, scheme: &Scheme) -> Option<String
     let lower = key.to_ascii_lowercase();
     if section == "[documentation]" {
         match lower.as_str() {
-            "displayname" => return Some("WinApps".to_string()),
-            "tooltip" => return Some("WinApps Visual Style".to_string()),
+            "displayname" => return Some("Sangria".to_string()),
+            "tooltip" => return Some("Sangria Visual Style".to_string()),
             _ => {}
         }
     }

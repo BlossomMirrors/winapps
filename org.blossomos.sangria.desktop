@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=WinApps
-Name[de]=WinApps
+Name=Sangria
+Name[de]=Sangria
 Comment=Install and run Windows programs on BlossomOS
 Comment[de]=Windows-Programme unter BlossomOS installieren und ausführen
-Icon=org.blossomos.winapps
-Exec=winapps %f
+Icon=org.blossomos.sangria
+Exec=sangria %f
 MimeType=application/vnd.microsoft.portable-executable;application/x-msdownload;application/x-ms-dos-executable;application/x-dosexec;application/x-msi;
 Categories=Utility;
 Terminal=false
