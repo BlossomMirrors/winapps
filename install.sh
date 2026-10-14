@@ -11,14 +11,29 @@ fi
 echo " *** Unlocking rpm-ostree so the changes persist after restart *** "
 sudo rpm-ostree usroverlay | true || true
 
-sudo dnf install -y cargo rust rpm-build \
+sudo dnf install -y umu-launcher kf6-kirigami kf6-kirigami-addons
+
+# build in a toolbox so compilers and devel packages never touch the system image
+TOOLBOX=sangria-build
+FEDORA=$(. /etc/os-release && echo "$VERSION_ID")
+
+if ! toolbox list --containers | grep -qw "$TOOLBOX"; then
+    echo " *** Creating the $TOOLBOX toolbox on Fedora $FEDORA *** "
+    toolbox create -y -r "$FEDORA" "$TOOLBOX"
+fi
+
+echo " *** Installing build dependencies in the toolbox *** "
+toolbox run -c "$TOOLBOX" sudo dnf install -y cargo rust rpm-build gcc-c++ \
     qt6-qtbase-devel qt6-qtdeclarative-devel \
     kf6-kcoreaddons-devel kf6-kcrash-devel kf6-ki18n-devel \
-    kf6-kiconthemes-devel kf6-kconfigwidgets-devel kf6-kcmutils-devel \
-    umu-launcher kf6-kirigami kf6-kirigami-addons
+    kf6-kiconthemes-devel kf6-kconfigwidgets-devel kf6-kcmutils-devel
+
+# ki18n 6.31 links its qml library to qt qml but only loads qt qml for static builds so the rust build gets an unknown library name
+toolbox run -c "$TOOLBOX" sudo sed -i 's/^if (ON AND NOT ON)$/if (ON)/' /usr/lib64/cmake/KF6I18n/KF6I18nConfig.cmake
 
 echo " *** Building *** "
-"$SRC_DIR/release.sh"
+# the shared home puts distrobox shims like ld in the path so keep only the toolbox system tools
+toolbox run -c "$TOOLBOX" env PATH=/usr/local/bin:/usr/bin bash -c 'cd "$1" && ./release.sh' _ "$SRC_DIR"
 
 RPM=$(ls -1t "$SRC_DIR"/release/sangria-*.rpm 2>/dev/null | head -1)
 if [ -z "$RPM" ]; then
